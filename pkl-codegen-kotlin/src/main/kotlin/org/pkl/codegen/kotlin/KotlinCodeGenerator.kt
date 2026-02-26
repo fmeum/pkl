@@ -208,6 +208,27 @@ class KotlinCodeGenerator(
       }
 
       fileSpec.addType(generateCompanionRelatedCode(moduleType, isModuleType = true).build())
+
+      val bazelLoadLabels = linkedSetOf<String>()
+      for (annotation in pModuleClass.annotations) {
+        if (annotation.classInfo == PClassInfo.BazelLoad) {
+          bazelLoadLabels.add(annotation["label"] as String)
+        }
+      }
+      for (pClass in moduleSchema.classes.values) {
+        for (annotation in pClass.annotations) {
+          if (annotation.classInfo == PClassInfo.BazelLoad) {
+            bazelLoadLabels.add(annotation["label"] as String)
+          }
+        }
+      }
+      if (bazelLoadLabels.isNotEmpty()) {
+        fileSpec.addComment(
+          "Bazel load labels:\n%L",
+          bazelLoadLabels.joinToString("\n") { "  $it" },
+        )
+      }
+
       return fileSpec.build().toString()
     }
 

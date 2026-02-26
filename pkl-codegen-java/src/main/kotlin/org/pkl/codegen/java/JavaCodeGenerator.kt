@@ -222,10 +222,29 @@ class JavaCodeGenerator(
 
       val (packageName, _) = nameMapper.map(schema.moduleName)
 
-      return JavaFile.builder(packageName, moduleClass.build())
-        .indent(codegenOptions.indent)
-        .build()
-        .toString()
+      val bazelLoadLabels = linkedSetOf<String>()
+      for (annotation in pModuleClass.annotations) {
+        if (annotation.classInfo == PClassInfo.BazelLoad) {
+          bazelLoadLabels.add(annotation["label"] as String)
+        }
+      }
+      for (pClass in schema.classes.values) {
+        for (annotation in pClass.annotations) {
+          if (annotation.classInfo == PClassInfo.BazelLoad) {
+            bazelLoadLabels.add(annotation["label"] as String)
+          }
+        }
+      }
+
+      val javaFileBuilder =
+        JavaFile.builder(packageName, moduleClass.build()).indent(codegenOptions.indent)
+      if (bazelLoadLabels.isNotEmpty()) {
+        javaFileBuilder.addFileComment(
+          "Bazel load labels:\n\$L",
+          bazelLoadLabels.joinToString("\n") { "  $it" },
+        )
+      }
+      return javaFileBuilder.build().toString()
     }
 
   private fun generateTypeSpec(pClass: PClass, schema: ModuleSchema): TypeSpec.Builder {

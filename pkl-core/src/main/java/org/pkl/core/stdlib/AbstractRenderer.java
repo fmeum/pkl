@@ -17,9 +17,12 @@ package org.pkl.core.stdlib;
 
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
 import org.pkl.core.ast.member.ClassProperty;
+import org.pkl.core.ast.member.ObjectMember;
 import org.pkl.core.runtime.BaseModule;
 import org.pkl.core.runtime.Identifier;
 import org.pkl.core.runtime.VmClass;
@@ -82,6 +85,16 @@ public abstract class AbstractRenderer implements VmValueVisitor {
 
   protected boolean isRenderDirective(Object value) {
     return value instanceof VmTyped typed && isRenderDirective(typed);
+  }
+
+  /**
+   * Returns a comparator for sorting member keys when iterating over the properties of the given
+   * object, or {@code null} to iterate in the natural (declaration) order.
+   *
+   * <p>Subclasses may override this to enable sorted property iteration.
+   */
+  protected @Nullable Comparator<Object> memberSortComparator(Object value) {
+    return null;
   }
 
   public final void renderDocument(Object value) {
@@ -191,19 +204,40 @@ public abstract class AbstractRenderer implements VmValueVisitor {
     var prevEnclosingValue = enclosingValue;
     enclosingValue = value;
     var isFirst = new MutableBoolean(true);
+    var comparator = memberSortComparator(value);
 
-    value.iterateAlreadyForcedMemberValues(
-        (memberKey, member, memberValue) -> {
-          if (member.isClass() || member.isTypeAlias()) return true;
-          assert member.isProp();
-          doVisitProperty(
-              (Identifier) memberKey,
-              memberValue,
-              value.getVmClass().getProperty((Identifier) memberKey),
-              member.getSourceSection(),
-              isFirst);
-          return true;
-        });
+    if (comparator != null) {
+      var memberList = new ArrayList<TypedMemberEntry>(4);
+      value.iterateAlreadyForcedMemberValues(
+          (memberKey, member, memberValue) -> {
+            if (member.isClass() || member.isTypeAlias()) return true;
+            assert member.isProp();
+            memberList.add(new TypedMemberEntry((Identifier) memberKey, member, memberValue));
+            return true;
+          });
+      memberList.sort((a, b) -> comparator.compare(a.key(), b.key()));
+      for (var entry : memberList) {
+        doVisitProperty(
+            entry.key(),
+            entry.value(),
+            value.getVmClass().getProperty(entry.key()),
+            entry.member().getSourceSection(),
+            isFirst);
+      }
+    } else {
+      value.iterateAlreadyForcedMemberValues(
+          (memberKey, member, memberValue) -> {
+            if (member.isClass() || member.isTypeAlias()) return true;
+            assert member.isProp();
+            doVisitProperty(
+                (Identifier) memberKey,
+                memberValue,
+                value.getVmClass().getProperty((Identifier) memberKey),
+                member.getSourceSection(),
+                isFirst);
+            return true;
+          });
+    }
 
     enclosingValue = prevEnclosingValue;
     endTyped(value, isFirst.get());
@@ -218,21 +252,46 @@ public abstract class AbstractRenderer implements VmValueVisitor {
     enclosingValue = value;
     var isFirst = new MutableBoolean(true);
     var canRenderPropertyOrEntry = canRenderPropertyOrEntryOf(value);
+    var comparator = memberSortComparator(value);
 
-    value.iterateAlreadyForcedMemberValues(
-        (memberKey, member, memberValue) -> {
-          var sourceSection = member.getSourceSection();
-          if (member.isProp()) {
-            if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
-            doVisitProperty((Identifier) memberKey, memberValue, null, sourceSection, isFirst);
-          } else if (member.isEntry()) {
-            if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
-            doVisitEntry(memberKey, memberValue, sourceSection, isFirst);
-          } else {
-            doVisitElement((long) memberKey, memberValue, sourceSection, isFirst.getAndSetFalse());
-          }
-          return true;
-        });
+    if (comparator != null) {
+      var propList = new ArrayList<DynamicPropEntry>(4);
+      value.iterateAlreadyForcedMemberValues(
+          (memberKey, member, memberValue) -> {
+            var sourceSection = member.getSourceSection();
+            if (member.isProp()) {
+              if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
+              propList.add(new DynamicPropEntry((Identifier) memberKey, memberValue, sourceSection));
+            } else if (member.isEntry()) {
+              if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
+              doVisitEntry(memberKey, memberValue, sourceSection, isFirst);
+            } else {
+              doVisitElement(
+                  (long) memberKey, memberValue, sourceSection, isFirst.getAndSetFalse());
+            }
+            return true;
+          });
+      propList.sort((a, b) -> comparator.compare(a.key(), b.key()));
+      for (var entry : propList) {
+        doVisitProperty(entry.key(), entry.value(), null, entry.sourceSection(), isFirst);
+      }
+    } else {
+      value.iterateAlreadyForcedMemberValues(
+          (memberKey, member, memberValue) -> {
+            var sourceSection = member.getSourceSection();
+            if (member.isProp()) {
+              if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
+              doVisitProperty((Identifier) memberKey, memberValue, null, sourceSection, isFirst);
+            } else if (member.isEntry()) {
+              if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
+              doVisitEntry(memberKey, memberValue, sourceSection, isFirst);
+            } else {
+              doVisitElement(
+                  (long) memberKey, memberValue, sourceSection, isFirst.getAndSetFalse());
+            }
+            return true;
+          });
+    }
 
     enclosingValue = prevEnclosingValue;
     endDynamic(value, isFirst.get());
@@ -442,4 +501,8 @@ public abstract class AbstractRenderer implements VmValueVisitor {
         .withProgramValue("Key", key)
         .build();
   }
+
+  private record TypedMemberEntry(Identifier key, ObjectMember member, Object value) {}
+
+  private record DynamicPropEntry(Identifier key, Object value, @Nullable SourceSection sourceSection) {}
 }

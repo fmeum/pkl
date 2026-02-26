@@ -47,6 +47,18 @@ class EvaluateOutputTextTest {
     checkRenderedOutput(OutputFormat.STARLARK)
   }
 
+  @Test
+  fun `render Starlark with load labels`() {
+    val evaluator = EvaluatorBuilder.preconfigured().build()
+    val output =
+      evaluator.evaluateOutputText(
+        ModuleSource.modulePath("org/pkl/core/starlarkLoadLabelTest.pkl")
+      )
+    val expected =
+      IoUtils.readClassPathResourceAsString(javaClass, "starlarkLoadLabelTest.starlark")
+    assertThat(output.trim()).isEqualTo(expected.trim())
+  }
+
   private fun checkRenderedOutput(format: OutputFormat) {
     val evaluator = EvaluatorBuilder.preconfigured().setOutputFormat(format).build()
 

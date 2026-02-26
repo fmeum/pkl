@@ -386,6 +386,104 @@ class KotlinCodeGeneratorTest {
   }
 
   @Test
+  fun `bazel load label on class`() {
+    val kotlinCode =
+      generateKotlinCode(
+        """
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class AnnotatedClass {
+        name: String
+      }
+    """
+          .trimIndent()
+      )
+
+    assertThat(kotlinCode)
+      .contains("// Bazel load labels:")
+      .contains("//   @rules_pkg//pkg:bzl_library.bzl")
+  }
+
+  @Test
+  fun `bazel load label on module class`() {
+    val kotlinCode =
+      generateKotlinCode(
+        """
+      @BazelLoad { label = "@com_example//rules:defs.bzl" }
+      module MyModule
+
+      name: String
+    """
+          .trimIndent()
+      )
+
+    assertThat(kotlinCode)
+      .contains("// Bazel load labels:")
+      .contains("//   @com_example//rules:defs.bzl")
+  }
+
+  @Test
+  fun `bazel load labels deduplication`() {
+    val kotlinCode =
+      generateKotlinCode(
+        """
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class ClassA {
+        name: String
+      }
+
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class ClassB {
+        value: Int
+      }
+    """
+          .trimIndent()
+      )
+
+    val text = kotlinCode.text
+    val labelCount = text.split("@rules_pkg//pkg:bzl_library.bzl").size - 1
+    assertThat(labelCount).isEqualTo(1)
+  }
+
+  @Test
+  fun `bazel load labels from multiple classes collected`() {
+    val kotlinCode =
+      generateKotlinCode(
+        """
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class ClassA {
+        name: String
+      }
+
+      @BazelLoad { label = "@com_example//rules:defs.bzl" }
+      class ClassB {
+        value: Int
+      }
+    """
+          .trimIndent()
+      )
+
+    assertThat(kotlinCode)
+      .contains("// Bazel load labels:")
+      .contains("//   @rules_pkg//pkg:bzl_library.bzl")
+      .contains("//   @com_example//rules:defs.bzl")
+  }
+
+  @Test
+  fun `no bazel load labels generates no comment`() {
+    val kotlinCode =
+      generateKotlinCode(
+        """
+      class PlainClass {
+        name: String
+      }
+    """
+          .trimIndent()
+      )
+
+    assertThat(kotlinCode).doesNotContain("Bazel load labels")
+  }
+
+  @Test
   fun properties() {
     val (other, propertyTypes) = instantiateOtherAndPropertyTypes()
 

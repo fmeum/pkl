@@ -144,6 +144,9 @@ public final class Identifier implements Comparable<Identifier> {
   public static final Identifier SOURCE_TEXT = get("sourceText");
   public static final Identifier SOURCE_URI = get("sourceUri");
 
+  // members of pkl.starlark#LoadLabel
+  public static final Identifier LABEL = get("label");
+
   // members of pkl.yaml
   public static final Identifier MAX_COLLECTION_ALIASES = get("maxCollectionAliases");
 

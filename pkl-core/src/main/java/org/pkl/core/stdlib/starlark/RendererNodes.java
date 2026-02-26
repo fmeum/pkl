@@ -17,6 +17,9 @@ package org.pkl.core.stdlib.starlark;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import org.pkl.core.runtime.Identifier;
 import org.pkl.core.runtime.VmBytes;
 import org.pkl.core.runtime.VmDataSize;
@@ -134,18 +137,50 @@ public final class RendererNodes {
 
     private final boolean renderInline;
 
+    /**
+     * Maps Bazel load labels to the set of symbols to load from each label. Populated during
+     * rendering when classes annotated with {@code @pkl.starlark#LoadLabel} are encountered.
+     * Non-null only during {@link #visitDocument}.
+     */
+    private @Nullable LinkedHashMap<String, LinkedHashSet<String>> loadLabels = null;
+
     private Renderer(
       StringBuilder builder, String indent, boolean omitNullProperties, PklConverter converter) {
       super("Starlark", builder, indent, converter, omitNullProperties, omitNullProperties);
       renderInline = indent.isEmpty();
     }
 
+    /**
+     * Sorts properties of nested objects (not the top-level document module) alphabetically by
+     * name to produce deterministic, canonical Starlark output.
+     */
+    @Override
+    protected @Nullable Comparator<Object> memberSortComparator(Object value) {
+      if (value == documentModule) return null;
+      return (a, b) -> ((Identifier) a).toString().compareTo(((Identifier) b).toString());
+    }
+
     @Override
     protected void visitDocument(Object value) {
       if (value instanceof VmTyped || value instanceof VmDynamic) {
         documentModule = value;
+        loadLabels = new LinkedHashMap<>();
       }
+      var startPos = builder.length();
       visit(value);
+      if (loadLabels != null && !loadLabels.isEmpty()) {
+        var header = new StringBuilder();
+        for (var entry : loadLabels.entrySet()) {
+          header.append("load(\"").append(entry.getKey()).append('"');
+          for (var symbol : entry.getValue()) {
+            header.append(", \"").append(symbol).append('"');
+          }
+          header.append(')').append(LINE_BREAK);
+        }
+        header.append(LINE_BREAK);
+        builder.insert(startPos, header);
+      }
+      loadLabels = null;
       documentModule = null;
     }
 
@@ -374,6 +409,15 @@ public final class RendererNodes {
         // Top-level module as typed — no rendering needed.
         return;
       }
+      if (loadLabels != null) {
+        for (var annotation : value.getVmClass().getAnnotations()) {
+          if (annotation.getVmClass().getQualifiedName().equals("pkl.base#BazelLoad")) {
+            var label = (String) VmUtils.readMember(annotation, Identifier.LABEL);
+            var symbol = value.getVmClass().getSimpleName();
+            loadLabels.computeIfAbsent(label, k -> new LinkedHashSet<>()).add(symbol);
+          }
+        }
+      }
       var className = value.getVmClass().getSimpleName();
       builder.append(className).append('(');
       increaseIndent();
@@ -400,7 +444,7 @@ public final class RendererNodes {
       endFunctionCall(!isEmpty || wasRuleCall);
       if (wasRuleCall) {
         ruleCallStartDepth = -1;
-        builder.append(LINE_BREAK);
+        builder.append(LINE_BREAK).append(LINE_BREAK);
       }
       objectDepth--;
     }
@@ -452,7 +496,7 @@ public final class RendererNodes {
         // Everything else: render as a variable assignment.
         builder.append(name).append(" = ");
         visit(value);
-        builder.append(LINE_BREAK);
+        builder.append(LINE_BREAK).append(LINE_BREAK);
       }
     }
   }

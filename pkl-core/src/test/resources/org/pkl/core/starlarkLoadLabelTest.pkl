@@ -1,0 +1,36 @@
+import "pkl:starlark"
+
+@BazelLoad { label = "@rules_cc//cc:defs.bzl" }
+class cc_library {
+  srcs: Listing<String>
+  deps: Listing<String>
+}
+
+@BazelLoad { label = "@rules_cc//cc:defs.bzl" }
+class cc_binary {
+  srcs: Listing<String>
+  deps: Listing<String>
+}
+
+@BazelLoad { label = "@bazel_tools//tools/build_defs/pkg:pkg.bzl" }
+class pkg_tar {
+  srcs: Listing<String>
+}
+
+myLib = new cc_library {
+  srcs { "foo.cc" }
+  deps { ":bar" }
+}
+
+myBin = new cc_binary {
+  srcs { "main.cc" }
+  deps { ":myLib" }
+}
+
+myPkg = new pkg_tar {
+  srcs { ":myBin" }
+}
+
+output {
+  renderer = new starlark.Renderer {}
+}

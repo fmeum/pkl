@@ -2337,6 +2337,103 @@ class JavaCodeGeneratorTest {
     return other to propertyTypes
   }
 
+  @Test
+  fun `bazel load label on class`() {
+    val javaCode =
+      generateJavaCode(
+        """
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class AnnotatedClass {
+        name: String
+      }
+    """
+          .trimIndent()
+      )
+
+    assertThat(javaCode)
+      .contains("// Bazel load labels:")
+      .contains("//   @rules_pkg//pkg:bzl_library.bzl")
+  }
+
+  @Test
+  fun `bazel load label on module class`() {
+    val javaCode =
+      generateJavaCode(
+        """
+      @BazelLoad { label = "@com_example//rules:defs.bzl" }
+      module MyModule
+
+      name: String
+    """
+          .trimIndent()
+      )
+
+    assertThat(javaCode)
+      .contains("// Bazel load labels:")
+      .contains("//   @com_example//rules:defs.bzl")
+  }
+
+  @Test
+  fun `bazel load labels deduplication`() {
+    val javaCode =
+      generateJavaCode(
+        """
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class ClassA {
+        name: String
+      }
+
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class ClassB {
+        value: Int
+      }
+    """
+          .trimIndent()
+      )
+
+    val labelCount = javaCode.text.split("@rules_pkg//pkg:bzl_library.bzl").size - 1
+    assertThat(labelCount).isEqualTo(1)
+  }
+
+  @Test
+  fun `bazel load labels from multiple classes collected`() {
+    val javaCode =
+      generateJavaCode(
+        """
+      @BazelLoad { label = "@rules_pkg//pkg:bzl_library.bzl" }
+      class ClassA {
+        name: String
+      }
+
+      @BazelLoad { label = "@com_example//rules:defs.bzl" }
+      class ClassB {
+        value: Int
+      }
+    """
+          .trimIndent()
+      )
+
+    assertThat(javaCode)
+      .contains("// Bazel load labels:")
+      .contains("//   @rules_pkg//pkg:bzl_library.bzl")
+      .contains("//   @com_example//rules:defs.bzl")
+  }
+
+  @Test
+  fun `no bazel load labels generates no comment`() {
+    val javaCode =
+      generateJavaCode(
+        """
+      class PlainClass {
+        name: String
+      }
+    """
+          .trimIndent()
+      )
+
+    assertThat(javaCode).doesNotContain("Bazel load labels")
+  }
+
   private fun assertThat(actual: JavaSourceCode): JavaSourceCodeAssert =
     JavaSourceCodeAssert(actual)
 

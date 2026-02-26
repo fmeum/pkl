@@ -44,16 +44,20 @@ module pkl.starlark
 /// (function calls) with an injected `name` argument derived from the property name.
 /// All other properties are rendered as variable assignments.
 ///
+/// Classes annotated with [BazelLoad] will have a corresponding `load()` statement emitted
+/// at the top of the rendered document. Load labels are grouped by file and deduplicated.
+///
 /// Example:
 /// ```
 /// import "pkl:starlark"
 ///
-/// class CcLibrary {
+/// @BazelLoad { label = "@rules_cc//cc:defs.bzl" }
+/// class cc_library {
 ///   srcs: Listing<String>
 ///   deps: Listing<String>
 /// }
 ///
-/// myLib = new CcLibrary {
+/// myLib = new cc_library {
 ///   srcs { "foo.cc" }
 ///   deps { ":bar" }
 /// }
@@ -65,13 +69,15 @@ module pkl.starlark
 ///
 /// The above renders as:
 /// ```
+/// load("@rules_cc//cc:defs.bzl", "cc_library")
+///
 /// cc_library(
 ///     name = "myLib",
-///     srcs = [
-///         "foo.cc",
-///     ],
 ///     deps = [
 ///         ":bar",
+///     ],
+///     srcs = [
+///         "foo.cc",
 ///     ],
 /// )
 /// ```
