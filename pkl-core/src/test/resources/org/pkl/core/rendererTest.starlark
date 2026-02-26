@@ -1,9 +1,15 @@
 int = 123
+
 float = 1.23
+
 bool = True
+
 string = "Pigeon"
+
 unicodeString = "abc😀abc😎abc"
+
 multiLineString = "have a\ngreat\nday"
+
 list = [
     123,
     1.23,
@@ -28,6 +34,7 @@ list = [
         name = "Pigeon",
     ),
 ]
+
 set = set([
     123,
     1.23,
@@ -52,6 +59,7 @@ set = set([
         name = "Pigeon",
     ),
 ])
+
 map = {
     "one": 123,
     "two": 1.23,
@@ -76,27 +84,29 @@ map = {
         name = "Pigeon",
     ),
 }
+
 Person(
     name = "typedObject",
-    age = 30,
     address = Address(
         street = "Folsom St.",
     ),
+    age = 30,
     hobbies = [
         "swimming",
         "gardening",
         "reading",
     ],
 )
+
 container = struct(
     name = "Pigeon",
-    age = 30,
     address = struct(
-        street = "Folsom St.",
         hobbies = [
             "swimming",
             "gardening",
             "reading",
         ],
+        street = "Folsom St.",
     ),
+    age = 30,
 )
