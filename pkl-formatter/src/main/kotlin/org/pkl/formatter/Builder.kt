@@ -771,38 +771,8 @@ internal class Builder(sourceText: String, private val grammarVersion: GrammarVe
   }
 
   private fun formatObjectMemberList(node: Node, groupId: Int): FormatNode {
-    val children = node.children
-    // Sort keyword arguments (object properties) when the body contains only properties
-    val allKeywordArgs =
-      children.all { it.isSemicolon() || it.type.isAffix || it.type == NodeType.OBJECT_PROPERTY }
-    if (allKeywordArgs && children.any { it.type == NodeType.OBJECT_PROPERTY }) {
-      val hasNewlines =
-        children
-          .filter { !it.isSemicolon() }
-          .zipWithNext()
-          .any { (prev, next) -> prev.linesBetween(next) > 0 }
-      val sep: FormatNode = if (hasNewlines) forceLine() else ifWrap(groupId, line(), Text("; "))
-      val propertiesWithComments = buildKeywordArgsWithComments(children)
-      val comparator = NaturalOrderComparator(ignoreCase = true)
-      val sorted =
-        propertiesWithComments.sortedWith(compareBy(comparator) { getKeywordArgName(it.property) })
-      val nodes = mutableListOf<FormatNode>()
-      for ((i, entry) in sorted.withIndex()) {
-        if (i > 0) nodes += sep
-        for (affix in entry.leadingAffixes) {
-          nodes += format(affix)
-          nodes += forceLine()
-        }
-        nodes += format(entry.property)
-        for (affix in entry.trailingAffixes) {
-          nodes += Space
-          nodes += format(affix)
-        }
-      }
-      return Indent(nodes)
-    }
     val nodes =
-      formatGeneric(children) { prev, next ->
+      formatGeneric(node.children) { prev, next ->
         val lines = prev.linesBetween(next)
         when (lines) {
           0 -> ifWrap(groupId, line(), Text("; "))
@@ -1177,62 +1147,6 @@ internal class Builder(sourceText: String, private val grammarVersion: GrammarVe
     nodes += formatGeneric(modifiers, Space)
     return Nodes(nodes)
   }
-
-  private data class PropertyWithComments(
-    val leadingAffixes: List<Node>,
-    val property: Node,
-    val trailingAffixes: List<Node>,
-  )
-
-  private fun buildKeywordArgsWithComments(children: List<Node>): List<PropertyWithComments> {
-    val result = mutableListOf<PropertyWithComments>()
-    var pendingAffixes = mutableListOf<Node>()
-    var lastProperty: Node? = null
-    var lastTrailing = mutableListOf<Node>()
-    var lastLeading = mutableListOf<Node>()
-
-    for (child in children) {
-      if (child.isSemicolon()) continue
-      if (child.type.isAffix) {
-        if (lastProperty != null && lastProperty.span.lineEnd == child.span.lineBegin) {
-          // trailing comment: on the same line as the end of the preceding property
-          lastTrailing.add(child)
-        } else {
-          // leading comment for the next property
-          // first, flush the previous property
-          if (lastProperty != null) {
-            result.add(PropertyWithComments(lastLeading, lastProperty, lastTrailing))
-            lastProperty = null
-            lastTrailing = mutableListOf()
-            lastLeading = mutableListOf()
-          }
-          pendingAffixes.add(child)
-        }
-      } else {
-        // property node
-        if (lastProperty != null) {
-          result.add(PropertyWithComments(lastLeading, lastProperty, lastTrailing))
-          lastTrailing = mutableListOf()
-        }
-        lastLeading = pendingAffixes
-        pendingAffixes = mutableListOf()
-        lastProperty = child
-      }
-    }
-    // flush the last property
-    if (lastProperty != null) {
-      result.add(PropertyWithComments(lastLeading, lastProperty, lastTrailing))
-    }
-    return result
-  }
-
-  private fun getKeywordArgName(node: Node): String =
-    // OBJECT_PROPERTY nodes always have this structure, so the fallback "" should never be reached
-    node
-      .findChildByType(NodeType.OBJECT_PROPERTY_HEADER)
-      ?.findChildByType(NodeType.OBJECT_PROPERTY_HEADER_BEGIN)
-      ?.findChildByType(NodeType.IDENTIFIER)
-      ?.text(source) ?: ""
 
   private data class ImportWithComments(
     val leadingAffixes: List<Node>,

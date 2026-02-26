@@ -17,6 +17,13 @@ package org.pkl.core.stdlib.starlark;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.ArrayDeque;
+import java.util.List;
+import java.util.Map;
 import org.pkl.core.runtime.Identifier;
 import org.pkl.core.runtime.VmBytes;
 import org.pkl.core.runtime.VmDataSize;
@@ -131,6 +138,14 @@ public final class RendererNodes {
      * the class's own {@code name} property is the first property encountered.
      */
     private boolean ruleCallHeaderWritten = false;
+
+    /**
+     * Per-nesting-level buffers for deferred sorted rendering of keyword arguments. Each level
+     * pushes a list when entering a function-call or struct context. {@code visitProperty} adds
+     * {@code (name, value)} pairs to the top list instead of rendering immediately. The list is
+     * sorted alphabetically and rendered in {@link #endTyped} / {@link #endDynamic}.
+     */
+    private final Deque<List<Map.Entry<Identifier, Object>>> sortingBuffers = new ArrayDeque<>();
 
     private final boolean renderInline;
 
@@ -348,6 +363,7 @@ public final class RendererNodes {
       } else {
         builder.append("struct(");
         increaseIndent();
+        sortingBuffers.push(new ArrayList<>());
       }
     }
 
@@ -360,6 +376,7 @@ public final class RendererNodes {
       if (value.hasElements()) {
         endArray(isEmpty);
       } else {
+        renderSortedProperties();
         endFunctionCall(!isEmpty);
       }
       objectDepth--;
@@ -387,6 +404,7 @@ public final class RendererNodes {
         ruleCallHeaderWritten = true;
         pendingRuleName = null;
       }
+      sortingBuffers.push(new ArrayList<>());
     }
 
     @Override
@@ -396,11 +414,12 @@ public final class RendererNodes {
         return;
       }
       boolean wasRuleCall = (objectDepth == ruleCallStartDepth);
+      renderSortedProperties();
       ruleCallHeaderWritten = false;
       endFunctionCall(!isEmpty || wasRuleCall);
       if (wasRuleCall) {
         ruleCallStartDepth = -1;
-        builder.append(LINE_BREAK);
+        builder.append(LINE_BREAK).append(LINE_BREAK);
       }
       objectDepth--;
     }
@@ -428,6 +447,14 @@ public final class RendererNodes {
         return;
       }
 
+      // Defer rendering to allow alphabetical sorting in endTyped / endDynamic.
+      var buffer = sortingBuffers.peek();
+      if (buffer != null) {
+        buffer.add(new AbstractMap.SimpleImmutableEntry<>(name, value));
+      }
+    }
+
+    private void renderKeywordArg(Identifier name, Object value, boolean isFirst) {
       // Keyword argument in a function call or struct.
       boolean needsComma = !isFirst || ruleCallHeaderWritten;
       ruleCallHeaderWritten = false;
@@ -443,16 +470,30 @@ public final class RendererNodes {
       visit(value);
     }
 
+    /**
+     * Pops the top sorting buffer, sorts the collected properties alphabetically by name, and
+     * renders them in sorted order.
+     */
+    private void renderSortedProperties() {
+      var buffer = sortingBuffers.poll();
+      if (buffer == null || buffer.isEmpty()) return;
+      buffer.sort(Comparator.comparing(e -> e.getKey().toString()));
+      for (int i = 0; i < buffer.size(); i++) {
+        var entry = buffer.get(i);
+        renderKeywordArg(entry.getKey(), entry.getValue(), i == 0);
+      }
+    }
+
     private void visitTopLevelProperty(Identifier name, Object value) {
       if (value instanceof VmTyped typedValue && !isRenderDirective(typedValue)) {
         // Class instance: render as a rule call (no assignment; endTyped adds trailing newline).
         pendingRuleName = name.toString();
         visit(value);
       } else {
-        // Everything else: render as a variable assignment.
+        // Everything else: render as a variable assignment followed by a blank line.
         builder.append(name).append(" = ");
         visit(value);
-        builder.append(LINE_BREAK);
+        builder.append(LINE_BREAK).append(LINE_BREAK);
       }
     }
   }
