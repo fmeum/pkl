@@ -1,18 +1,18 @@
 import "pkl:starlark"
 
-@starlark.LoadLabel { label = "@rules_cc//cc:defs.bzl" }
+@BazelLoad { label = "@rules_cc//cc:defs.bzl" }
 class cc_library {
   srcs: Listing<String>
   deps: Listing<String>
 }
 
-@starlark.LoadLabel { label = "@rules_cc//cc:defs.bzl" }
+@BazelLoad { label = "@rules_cc//cc:defs.bzl" }
 class cc_binary {
   srcs: Listing<String>
   deps: Listing<String>
 }
 
-@starlark.LoadLabel { label = "@bazel_tools//tools/build_defs/pkg:pkg.bzl" }
+@BazelLoad { label = "@bazel_tools//tools/build_defs/pkg:pkg.bzl" }
 class pkg_tar {
   srcs: Listing<String>
 }

@@ -157,7 +157,7 @@ public final class RendererNodes {
     @Override
     protected @Nullable Comparator<Object> memberSortComparator(Object value) {
       if (value == documentModule) return null;
-      return Comparator.comparing(Object::toString);
+      return (a, b) -> ((Identifier) a).toString().compareTo(((Identifier) b).toString());
     }
 
     @Override
@@ -411,7 +411,7 @@ public final class RendererNodes {
       }
       if (loadLabels != null) {
         for (var annotation : value.getVmClass().getAnnotations()) {
-          if (annotation.getVmClass().getQualifiedName().equals("pkl.starlark#LoadLabel")) {
+          if (annotation.getVmClass().getQualifiedName().equals("pkl.base#BazelLoad")) {
             var label = (String) VmUtils.readMember(annotation, Identifier.LABEL);
             var symbol = value.getVmClass().getSimpleName();
             loadLabels.computeIfAbsent(label, k -> new LinkedHashSet<>()).add(symbol);

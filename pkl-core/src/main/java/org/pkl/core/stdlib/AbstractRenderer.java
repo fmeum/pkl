@@ -207,21 +207,21 @@ public abstract class AbstractRenderer implements VmValueVisitor {
     var comparator = memberSortComparator(value);
 
     if (comparator != null) {
-      var memberList = new ArrayList<Object[]>(4);
+      var memberList = new ArrayList<TypedMemberEntry>(4);
       value.iterateAlreadyForcedMemberValues(
           (memberKey, member, memberValue) -> {
             if (member.isClass() || member.isTypeAlias()) return true;
             assert member.isProp();
-            memberList.add(new Object[] {memberKey, member, memberValue});
+            memberList.add(new TypedMemberEntry((Identifier) memberKey, member, memberValue));
             return true;
           });
-      memberList.sort((a, b) -> comparator.compare(a[0], b[0]));
+      memberList.sort((a, b) -> comparator.compare(a.key(), b.key()));
       for (var entry : memberList) {
         doVisitProperty(
-            (Identifier) entry[0],
-            entry[2],
-            value.getVmClass().getProperty((Identifier) entry[0]),
-            ((ObjectMember) entry[1]).getSourceSection(),
+            entry.key(),
+            entry.value(),
+            value.getVmClass().getProperty(entry.key()),
+            entry.member().getSourceSection(),
             isFirst);
       }
     } else {
@@ -255,13 +255,13 @@ public abstract class AbstractRenderer implements VmValueVisitor {
     var comparator = memberSortComparator(value);
 
     if (comparator != null) {
-      var propList = new ArrayList<Object[]>(4);
+      var propList = new ArrayList<DynamicPropEntry>(4);
       value.iterateAlreadyForcedMemberValues(
           (memberKey, member, memberValue) -> {
             var sourceSection = member.getSourceSection();
             if (member.isProp()) {
               if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
-              propList.add(new Object[] {memberKey, member, memberValue, sourceSection});
+              propList.add(new DynamicPropEntry((Identifier) memberKey, memberValue, sourceSection));
             } else if (member.isEntry()) {
               if (!canRenderPropertyOrEntry) cannotRenderObjectWithElementsAndOtherMembers(value);
               doVisitEntry(memberKey, memberValue, sourceSection, isFirst);
@@ -271,14 +271,9 @@ public abstract class AbstractRenderer implements VmValueVisitor {
             }
             return true;
           });
-      propList.sort((a, b) -> comparator.compare(a[0], b[0]));
+      propList.sort((a, b) -> comparator.compare(a.key(), b.key()));
       for (var entry : propList) {
-        doVisitProperty(
-            (Identifier) entry[0],
-            entry[2],
-            null,
-            (SourceSection) entry[3],
-            isFirst);
+        doVisitProperty(entry.key(), entry.value(), null, entry.sourceSection(), isFirst);
       }
     } else {
       value.iterateAlreadyForcedMemberValues(
@@ -506,4 +501,8 @@ public abstract class AbstractRenderer implements VmValueVisitor {
         .withProgramValue("Key", key)
         .build();
   }
+
+  private record TypedMemberEntry(Identifier key, ObjectMember member, Object value) {}
+
+  private record DynamicPropEntry(Identifier key, Object value, @Nullable SourceSection sourceSection) {}
 }

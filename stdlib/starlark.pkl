@@ -18,53 +18,6 @@
 @ModuleInfo { minPklVersion = "0.31.0" }
 module pkl.starlark
 
-/// Indicates that the annotated class is a Starlark rule that should be loaded from [label].
-///
-/// When rendering a module as Starlark using [Renderer], the renderer collects [LoadLabel]
-/// annotations from all classes encountered during rendering and emits the corresponding
-/// `load()` statements at the top of the output.
-///
-/// The symbol name used in the `load()` statement is the simple name of the annotated class.
-///
-/// Example:
-/// ```
-/// import "pkl:starlark"
-///
-/// @starlark.LoadLabel { label = "@rules_cc//cc:defs.bzl" }
-/// class cc_library {
-///   srcs: Listing<String>
-///   deps: Listing<String>
-/// }
-///
-/// myLib = new cc_library {
-///   srcs { "foo.cc" }
-///   deps { ":bar" }
-/// }
-///
-/// output {
-///   renderer = new starlark.Renderer {}
-/// }
-/// ```
-///
-/// The above renders as:
-/// ```
-/// load("@rules_cc//cc:defs.bzl", "cc_library")
-///
-/// cc_library(
-///     name = "myLib",
-///     srcs = [
-///         "foo.cc",
-///     ],
-///     deps = [
-///         ":bar",
-///     ],
-/// )
-/// ```
-class LoadLabel extends Annotation {
-  /// The Bazel label of the `.bzl` file to load the annotated class from.
-  label: String
-}
-
 /// Renders values as [Starlark](https://github.com/bazelbuild/starlark/blob/master/spec.md).
 ///
 /// Pkl values are mapped to Starlark values as follows:
@@ -91,16 +44,20 @@ class LoadLabel extends Annotation {
 /// (function calls) with an injected `name` argument derived from the property name.
 /// All other properties are rendered as variable assignments.
 ///
+/// Classes annotated with [BazelLoad] will have a corresponding `load()` statement emitted
+/// at the top of the rendered document. Load labels are grouped by file and deduplicated.
+///
 /// Example:
 /// ```
 /// import "pkl:starlark"
 ///
-/// class CcLibrary {
+/// @BazelLoad { label = "@rules_cc//cc:defs.bzl" }
+/// class cc_library {
 ///   srcs: Listing<String>
 ///   deps: Listing<String>
 /// }
 ///
-/// myLib = new CcLibrary {
+/// myLib = new cc_library {
 ///   srcs { "foo.cc" }
 ///   deps { ":bar" }
 /// }
@@ -112,13 +69,15 @@ class LoadLabel extends Annotation {
 ///
 /// The above renders as:
 /// ```
+/// load("@rules_cc//cc:defs.bzl", "cc_library")
+///
 /// cc_library(
 ///     name = "myLib",
-///     srcs = [
-///         "foo.cc",
-///     ],
 ///     deps = [
 ///         ":bar",
+///     ],
+///     srcs = [
+///         "foo.cc",
 ///     ],
 /// )
 /// ```
