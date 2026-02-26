@@ -36,6 +36,7 @@ module pkl.starlark
 /// | [Mapping]      | dict             |
 /// | [Dynamic]      | struct (if properties) or list (if elements) |
 /// | [Typed]        | function call    |
+/// | [Pair]         | tuple            |
 ///
 /// Some Pkl types, such as [Duration] and [DataSize], don't have a Starlark equivalent.
 /// To render values of such types, define _output converters_ (see [Renderer.converters]).

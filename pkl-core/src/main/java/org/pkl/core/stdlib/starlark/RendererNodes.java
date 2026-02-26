@@ -208,7 +208,11 @@ public final class RendererNodes {
 
     @Override
     public void visitPair(VmPair value) {
-      cannotRenderTypeAddConverter(value);
+      builder.append('(');
+      visit(value.getFirst());
+      builder.append(", ");
+      visit(value.getSecond());
+      builder.append(')');
     }
 
     @Override
