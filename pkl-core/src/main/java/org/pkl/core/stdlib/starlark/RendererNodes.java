@@ -471,13 +471,17 @@ public final class RendererNodes {
     }
 
     /**
-     * Pops the top sorting buffer, sorts the collected properties alphabetically by name, and
-     * renders them in sorted order.
+     * Pops the top sorting buffer, sorts the collected properties with {@code name} first then
+     * remaining properties alphabetically, and renders them in sorted order.
      */
     private void renderSortedProperties() {
       var buffer = sortingBuffers.poll();
       if (buffer == null || buffer.isEmpty()) return;
-      buffer.sort(Comparator.comparing(e -> e.getKey().toString()));
+      buffer.sort(
+          Comparator.comparingInt(
+                  (Map.Entry<Identifier, Object> e) ->
+                      e.getKey().toString().equals("name") ? 0 : 1)
+              .thenComparing(e -> e.getKey().toString()));
       for (int i = 0; i < buffer.size(); i++) {
         var entry = buffer.get(i);
         renderKeywordArg(entry.getKey(), entry.getValue(), i == 0);

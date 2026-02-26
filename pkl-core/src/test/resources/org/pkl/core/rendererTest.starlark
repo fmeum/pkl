@@ -99,6 +99,7 @@ Person(
 )
 
 container = struct(
+    name = "Pigeon",
     address = struct(
         hobbies = [
             "swimming",
@@ -108,5 +109,4 @@ container = struct(
         street = "Folsom St.",
     ),
     age = 30,
-    name = "Pigeon",
 )
