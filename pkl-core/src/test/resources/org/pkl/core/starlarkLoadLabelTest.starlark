@@ -1,0 +1,29 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_binary")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+cc_library(
+    name = "myLib",
+    deps = [
+        ":bar",
+    ],
+    srcs = [
+        "foo.cc",
+    ],
+)
+
+cc_binary(
+    name = "myBin",
+    deps = [
+        ":myLib",
+    ],
+    srcs = [
+        "main.cc",
+    ],
+)
+
+pkg_tar(
+    name = "myPkg",
+    srcs = [
+        ":myBin",
+    ],
+)
