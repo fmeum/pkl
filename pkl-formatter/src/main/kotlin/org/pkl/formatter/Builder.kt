@@ -1195,7 +1195,7 @@ internal class Builder(sourceText: String, private val grammarVersion: GrammarVe
       if (child.isSemicolon()) continue
       if (child.type.isAffix) {
         if (lastProperty != null && lastProperty.span.lineEnd == child.span.lineBegin) {
-          // trailing comment on the same line as the preceding property
+          // trailing comment: on the same line as the end of the preceding property
           lastTrailing.add(child)
         } else {
           // leading comment for the next property
@@ -1227,6 +1227,7 @@ internal class Builder(sourceText: String, private val grammarVersion: GrammarVe
   }
 
   private fun getKeywordArgName(node: Node): String =
+    // OBJECT_PROPERTY nodes always have this structure, so the fallback "" should never be reached
     node
       .findChildByType(NodeType.OBJECT_PROPERTY_HEADER)
       ?.findChildByType(NodeType.OBJECT_PROPERTY_HEADER_BEGIN)
