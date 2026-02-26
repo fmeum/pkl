@@ -147,6 +147,9 @@ public final class RendererNodes {
      */
     private final Deque<List<Map.Entry<Identifier, Object>>> sortingBuffers = new ArrayDeque<>();
 
+    /** Whether at least one top-level statement has been written. */
+    private boolean hasWrittenTopLevelStatement = false;
+
     private final boolean renderInline;
 
     private Renderer(
@@ -223,7 +226,11 @@ public final class RendererNodes {
 
     @Override
     public void visitPair(VmPair value) {
-      cannotRenderTypeAddConverter(value);
+      builder.append('(');
+      visit(value.getFirst());
+      builder.append(", ");
+      visit(value.getSecond());
+      builder.append(')');
     }
 
     @Override
@@ -419,7 +426,7 @@ public final class RendererNodes {
       endFunctionCall(!isEmpty || wasRuleCall);
       if (wasRuleCall) {
         ruleCallStartDepth = -1;
-        builder.append(LINE_BREAK).append(LINE_BREAK);
+        builder.append(LINE_BREAK);
       }
       objectDepth--;
     }
@@ -489,15 +496,19 @@ public final class RendererNodes {
     }
 
     private void visitTopLevelProperty(Identifier name, Object value) {
+      if (hasWrittenTopLevelStatement) {
+        builder.append(LINE_BREAK);
+      }
+      hasWrittenTopLevelStatement = true;
       if (value instanceof VmTyped typedValue && !isRenderDirective(typedValue)) {
         // Class instance: render as a rule call (no assignment; endTyped adds trailing newline).
         pendingRuleName = name.toString();
         visit(value);
       } else {
-        // Everything else: render as a variable assignment followed by a blank line.
+        // Everything else: render as a variable assignment.
         builder.append(name).append(" = ");
         visit(value);
-        builder.append(LINE_BREAK).append(LINE_BREAK);
+        builder.append(LINE_BREAK);
       }
     }
   }
