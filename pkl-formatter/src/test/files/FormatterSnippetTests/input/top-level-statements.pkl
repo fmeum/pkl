@@ -1,8 +1,0 @@
-module foo
-import "bar.pkl"
-class Foo {}
-class Bar {}
-x = 1
-y = 2
-typealias T = String
-function fun() = 1

@@ -87,10 +87,10 @@ map = {
 
 Person(
     name = "typedObject",
+    age = 30,
     address = Address(
         street = "Folsom St.",
     ),
-    age = 30,
     hobbies = [
         "swimming",
         "gardening",
@@ -100,13 +100,13 @@ Person(
 
 container = struct(
     name = "Pigeon",
+    age = 30,
     address = struct(
+        street = "Folsom St.",
         hobbies = [
             "swimming",
             "gardening",
             "reading",
         ],
-        street = "Folsom St.",
     ),
-    age = 30,
 )

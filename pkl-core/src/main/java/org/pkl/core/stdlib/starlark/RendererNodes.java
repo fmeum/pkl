@@ -132,6 +132,9 @@ public final class RendererNodes {
      */
     private boolean ruleCallHeaderWritten = false;
 
+    /** Whether at least one top-level statement has been written. */
+    private boolean hasWrittenTopLevelStatement = false;
+
     private final boolean renderInline;
 
     private Renderer(
@@ -444,6 +447,10 @@ public final class RendererNodes {
     }
 
     private void visitTopLevelProperty(Identifier name, Object value) {
+      if (hasWrittenTopLevelStatement) {
+        builder.append(LINE_BREAK);
+      }
+      hasWrittenTopLevelStatement = true;
       if (value instanceof VmTyped typedValue && !isRenderDirective(typedValue)) {
         // Class instance: render as a rule call (no assignment; endTyped adds trailing newline).
         pendingRuleName = name.toString();
