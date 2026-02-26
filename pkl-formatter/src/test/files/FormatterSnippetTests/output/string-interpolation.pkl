@@ -12,10 +12,9 @@ prop3 =
   """
   \(new {
     // some comment
-    foo = 1
-
-    // some comment
     bar = 2
+    // some comment
+    foo = 1
   })
   """
 
@@ -49,7 +48,7 @@ prop7 =
   // trailing line comment
   )"
 
-prop8 = "\(new { foo = 1; bar = 2; baz = 3 })"
+prop8 = "\(new { bar = 2; baz = 3; foo = 1 })"
 
 prop9 = "\(if (true) 1 else 2)"
 
