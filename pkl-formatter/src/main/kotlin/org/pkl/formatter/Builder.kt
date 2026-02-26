@@ -164,10 +164,7 @@ internal class Builder(sourceText: String, private val grammarVersion: GrammarVe
     }
 
   private fun formatModule(node: Node): FormatNode {
-    val nodes =
-      formatGeneric(node.children) { prev, next ->
-        if (prev.linesBetween(next) > 1) TWO_NEWLINES else forceLine()
-      }
+    val nodes = formatGeneric(node.children) { _, _ -> TWO_NEWLINES }
     return Nodes(nodes)
   }
 
