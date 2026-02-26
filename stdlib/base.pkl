@@ -203,6 +203,17 @@ class DocExample extends Annotation {
   subjects: Listing<String>
 }
 
+/// Indicates that the annotated class is associated with a Bazel load label.
+///
+/// When used with code generators, the load labels for all annotated classes in a module
+/// are collected and emitted at the top of the generated file.
+class BazelLoad extends Annotation {
+  /// The Bazel load label.
+  ///
+  /// Example: `"@rules_pkg//pkg:bzl_library.bzl"`
+  label: String
+}
+
 /// Indicates that the annotated property's string value contains source code written in [language].
 class SourceCode extends Annotation {
   /// The language that the source code is written in.

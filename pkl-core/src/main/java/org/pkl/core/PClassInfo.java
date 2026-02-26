@@ -75,6 +75,8 @@ public final class PClassInfo<T> implements Serializable {
   public static final PClassInfo<PObject> Unlisted = pklBaseClassInfo("Unlisted", PObject.class);
   public static final PClassInfo<PObject> DocExample =
       pklBaseClassInfo("DocExample", PObject.class);
+  public static final PClassInfo<PObject> BazelLoad =
+      pklBaseClassInfo("BazelLoad", PObject.class);
   public static final PClassInfo<PObject> PcfRenderDirective =
       pklBaseClassInfo("PcfRenderDirective", PObject.class);
   public static final PClassInfo<PObject> ModuleInfo =
@@ -228,6 +230,7 @@ public final class PClassInfo<T> implements Serializable {
           entry(AlsoKnownAs.className, AlsoKnownAs),
           entry(Unlisted.className, Unlisted),
           entry(DocExample.className, DocExample),
+          entry(BazelLoad.className, BazelLoad),
           entry(PcfRenderDirective.className, PcfRenderDirective));
 
   private final String moduleName;
